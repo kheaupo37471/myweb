@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <meta name="theme-color" content="#E24B4A"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Body Stats"/>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icons/icon-192.png"/>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <title>Body Stats — BMI Tracker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Barlow', system-ui, sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      min-height: 100dvh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Top bar */
+    .topbar {
+      background: #111;
+      border-bottom: 3px solid #E24B4A;
+      padding: env(safe-area-inset-top, 0) 0 0;
+      flex-shrink: 0;
+    }
+    .topbar-inner {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 18px 16px;
+    }
+    .topbar-icon {
+      width: 42px; height: 42px; background: #E24B4A;
+      border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .topbar-icon svg { width: 22px; height: 22px; fill: white; }
+    .topbar-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 22px; font-weight: 900; color: white;
+      letter-spacing: 1.5px; text-transform: uppercase; line-height: 1;
+    }
+    .topbar-sub {
+      font-size: 11px; color: #555; letter-spacing: 2px;
+      text-transform: uppercase; margin-top: 3px;
+    }
+
+    /* Scroll */
+    .scroll {
+      overflow-y: auto; -webkit-overflow-scrolling: touch;
+      padding: 14px 14px calc(env(safe-area-inset-bottom, 0px) + 28px);
+      display: flex; flex-direction: column; gap: 10px;
+    }
+
+    /* Install banner */
+    .install-bar {
+      background: #1a1a1a; border: 1px solid #E24B4A; border-radius: 6px;
+      padding: 12px 14px; display: none; align-items: center; gap: 10px;
+    }
+    .install-bar.show { display: flex; }
+    .install-bar p { flex: 1; font-size: 13px; color: #aaa; line-height: 1.4; }
+    .install-bar button {
+      background: #E24B4A; color: white; border: none; border-radius: 4px;
+      padding: 8px 16px; font-size: 13px; font-weight: 700; cursor: pointer;
+      font-family: 'Barlow Condensed', sans-serif; letter-spacing: 1px; text-transform: uppercase;
+    }
+    .install-x { background: none; border: none; color: #444; font-size: 18px; cursor: pointer; }
+
+    /* iOS tip */
+    .ios-tip {
+      background: #1a1a1a; border: 1px solid #333; border-radius: 6px;
+      padding: 12px 14px; font-size: 13px; color: #888; line-height: 1.6; display: none;
+    }
+    .ios-tip.show { display: block; }
+    .ios-tip-x { float: right; background: none; border: none; color: #555; font-size: 16px; cursor: pointer; }
+
+    /* Card */
+    .card { background: #1a1a1a; border: 1px solid #252525; border-radius: 6px; padding: 16px; }
+    .card-title {
+      font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700;
+      color: #E24B4A; letter-spacing: 2.5px; text-transform: uppercase;
+      margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+    }
+    .card-title::before { content: ''; display: block; width: 3px; height: 14px; background: #E24B4A; border-radius: 1px; }
+
+    /* Gender */
+    .gender-row { display: flex; gap: 6px; margin-bottom: 16px; }
+    .g-btn {
+      flex: 1; padding: 11px; border-radius: 4px; border: 1px solid #2a2a2a;
+      background: #111; color: #555; font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+      font-family: 'Barlow Condensed', sans-serif; letter-spacing: 1.5px; text-transform: uppercase;
+    }
+    .g-btn.active { background: #E24B4A; border-color: #E24B4A; color: #fff; }
+
+    /* Sliders */
+    .sl-wrap { margin-bottom: 18px; }
+    .sl-wrap:last-child { margin-bottom: 0; }
+    .sl-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .sl-name {
+      font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700;
+      color: #555; letter-spacing: 2px; text-transform: uppercase;
+    }
+    .sl-val {
+      font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 800;
+      color: #fff; background: #111; border: 1px solid #2a2a2a;
+      border-radius: 4px; padding: 2px 10px; letter-spacing: 1px;
+    }
+    input[type=range] {
+      width: 100%; -webkit-appearance: none; height: 4px;
+      border-radius: 2px; background: #2a2a2a; outline: none; cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 22px; height: 22px; border-radius: 3px;
+      background: #E24B4A; border: 2px solid #fff;
+    }
+
+    /* Metrics */
+    .m-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .m-cell { background: #111; border: 1px solid #222; border-radius: 4px; padding: 12px; }
+    .m-label {
+      font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700;
+      color: #444; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px;
+    }
+    .m-val { font-family: 'Barlow Condensed', sans-serif; font-size: 30px; font-weight: 900; color: #fff; line-height: 1; }
+    .m-unit { font-size: 11px; color: #444; margin-top: 3px; letter-spacing: 1px; }
+
+    /* BMI bar */
+    .bmi-bar { height: 8px; border-radius: 2px; position: relative; margin: 14px 0 6px; overflow: visible; }
+    .bmi-segments { display: flex; height: 100%; border-radius: 2px; overflow: hidden; }
+    .seg { flex: 1; }
+    .bmi-thumb {
+      position: absolute; top: -7px; width: 22px; height: 22px; border-radius: 3px;
+      background: #fff; border: 2.5px solid #E24B4A; transform: translateX(-50%);
+      transition: left 0.4s ease; box-shadow: 0 0 8px rgba(226,75,74,0.5);
+    }
+    .bmi-ticks { display: flex; justify-content: space-between; }
+    .bmi-ticks span {
+      font-family: 'Barlow Condensed', sans-serif; font-size: 10px;
+      color: #333; letter-spacing: 1px; text-transform: uppercase;
+    }
+
+    /* Status */
+    .status-bar {
+      margin-top: 12px; padding: 12px 14px; border-radius: 4px;
+      border-left: 4px solid #E24B4A; transition: all 0.3s;
+    }
+    .status-label {
+      font-family: 'Barlow Condensed', sans-serif; font-size: 22px;
+      font-weight: 900; letter-spacing: 2px; text-transform: uppercase;
+    }
+
+    /* Info row */
+    .info-row { display: flex; gap: 8px; margin-top: 10px; }
+    .info-cell { flex: 1; background: #111; border: 1px solid #222; border-radius: 4px; padding: 10px; }
+    .info-label {
+      font-family: 'Barlow Condensed', sans-serif; font-size: 10px;
+      color: #444; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px;
+    }
+    .info-val { font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 800; color: #ccc; }
+
+    /* Advice */
+    .advice-card { background: #111; border: 1px solid #252525; border-left: 4px solid #E24B4A; border-radius: 4px; padding: 16px; }
+    .advice-tag {
+      font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700;
+      color: #E24B4A; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;
+    }
+    .advice-text { font-size: 13px; color: #888; line-height: 1.7; }
+
+    .footer { text-align: center; font-size: 11px; color: #333; padding-top: 4px; letter-spacing: 1px; text-transform: uppercase; }
+  </style>
+</head>
+<body style="display:flex;flex-direction:column">
+
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="topbar-icon">
+        <svg viewBox="0 0 24 24"><path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29z"/></svg>
+      </div>
+      <div>
+        <div class="topbar-title">Body Stats</div>
+        <div class="topbar-sub">BMI · Calories · Ideal Weight</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll">
+
+    <div class="install-bar" id="installBar">
+      <p>Install as app — works offline</p>
+      <button id="installBtn">Install</button>
+      <button class="install-x" onclick="document.getElementById('installBar').classList.remove('show')">✕</button>
+    </div>
+
+    <div class="ios-tip" id="iosTip">
+      <button class="ios-tip-x" onclick="this.parentElement.classList.remove('show')">✕</button>
+      Install on iPhone: tap <strong style="color:#fff">Share</strong> → <strong style="color:#fff">"Add to Home Screen"</strong>
+    </div>
+
+    <!-- Input -->
+    <div class="card">
+      <div class="card-title">Input Data</div>
+      <div class="gender-row">
+        <button class="g-btn active" id="gM" onclick="setG('M')">Male</button>
+        <button class="g-btn" id="gF" onclick="setG('F')">Female</button>
+      </div>
+      <div class="sl-wrap">
+        <div class="sl-head"><span class="sl-name">Age</span><span class="sl-val" id="ageV">28</span></div>
+        <input type="range" min="10" max="90" step="1" value="28" id="age" oninput="upd()">
+      </div>
+      <div class="sl-wrap">
+        <div class="sl-head"><span class="sl-name">Height</span><span class="sl-val" id="htV">175 cm</span></div>
+        <input type="range" min="140" max="210" step="1" value="175" id="ht" oninput="upd()">
+      </div>
+      <div class="sl-wrap">
+        <div class="sl-head"><span class="sl-name">Weight</span><span class="sl-val" id="wtV">75 kg</span></div>
+        <input type="range" min="30" max="150" step="1" value="75" id="wt" oninput="upd()">
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="card">
+      <div class="card-title">Stats</div>
+      <div class="m-grid">
+        <div class="m-cell">
+          <div class="m-label">BMI</div>
+          <div class="m-val" id="bmiV">—</div>
+          <div class="m-unit">kg / m²</div>
+        </div>
+        <div class="m-cell">
+          <div class="m-label">TDEE</div>
+          <div class="m-val" id="tdeeV">—</div>
+          <div class="m-unit">kcal / day</div>
+        </div>
+        <div class="m-cell">
+          <div class="m-label">Target Weight</div>
+          <div class="m-val" id="ibwV">—</div>
+          <div class="m-unit">kg</div>
+        </div>
+        <div class="m-cell">
+          <div class="m-label">Difference</div>
+          <div class="m-val" id="diffV">—</div>
+          <div class="m-unit" id="diffU">kg</div>
+        </div>
+      </div>
+
+      <div class="bmi-bar">
+        <div class="bmi-segments">
+          <div class="seg" style="background:#378ADD"></div>
+          <div class="seg" style="background:#639922"></div>
+          <div class="seg" style="background:#BA7517"></div>
+          <div class="seg" style="background:#E24B4A"></div>
+        </div>
+        <div class="bmi-thumb" id="thumb" style="left:0%"></div>
+      </div>
+      <div class="bmi-ticks">
+        <span>Under</span><span>Normal</span><span>Over</span><span>Obese</span>
+      </div>
+
+      <div class="status-bar" id="statusBar">
+        <div class="status-label" id="statusLabel">—</div>
+      </div>
+
+      <div class="info-row">
+        <div class="info-cell">
+          <div class="info-label">Normal Range</div>
+          <div class="info-val" id="rangeV">—</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-label">BMR (Rest)</div>
+          <div class="info-val" id="bmrV">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Advice -->
+    <div class="advice-card">
+      <div class="advice-tag" id="advTag">// Assessment</div>
+      <div class="advice-text" id="advText">Enter your stats above to get your assessment.</div>
+    </div>
+
+    <div class="footer">For reference only — not medical advice</div>
+  </div>
+
+<script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+
+let gender = 'M';
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); deferredPrompt = e;
+  document.getElementById('installBar').classList.add('show');
+});
+document.getElementById('installBtn').onclick = async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  document.getElementById('installBar').classList.remove('show');
+};
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+if (isIOS && !isStandalone) document.getElementById('iosTip').classList.add('show');
+
+function setG(g) {
+  gender = g;
+  document.getElementById('gM').className = 'g-btn' + (g==='M' ? ' active' : '');
+  document.getElementById('gF').className = 'g-btn' + (g==='F' ? ' active' : '');
+  upd();
+}
+
+function upd() {
+  const age = +document.getElementById('age').value;
+  const h   = +document.getElementById('ht').value;
+  const w   = +document.getElementById('wt').value;
+  document.getElementById('ageV').textContent = age;
+  document.getElementById('htV').textContent  = h + ' cm';
+  document.getElementById('wtV').textContent  = w + ' kg';
+
+  const hm  = h / 100;
+  const bmi = w / (hm * hm);
+  const bmr = gender === 'M'
+    ? 10*w + 6.25*h - 5*age + 5
+    : 10*w + 6.25*h - 5*age - 161;
+  const tdee    = Math.round(bmr * 1.55);
+  const ibwLow  = 18.5 * hm * hm;
+  const ibwHigh = 22.9 * hm * hm;
+  const ibwMid  = (ibwLow + ibwHigh) / 2;
+  const diff    = w - ibwMid;
+
+  document.getElementById('bmiV').textContent  = bmi.toFixed(1);
+  document.getElementById('tdeeV').textContent = tdee.toLocaleString();
+  document.getElementById('ibwV').textContent  = ibwMid.toFixed(1);
+  document.getElementById('diffV').textContent = Math.abs(diff).toFixed(1);
+  document.getElementById('diffU').textContent =
+    diff > 0.5  ? 'kg over' :
+    diff < -0.5 ? 'kg under' : 'kg — on point';
+  document.getElementById('rangeV').textContent = ibwLow.toFixed(1) + '–' + ibwHigh.toFixed(1) + ' kg';
+  document.getElementById('bmrV').textContent   = Math.round(bmr).toLocaleString() + ' kcal';
+
+  const pct = Math.min(Math.max((bmi - 10) / 30, 0), 1) * 100;
+  document.getElementById('thumb').style.left = pct + '%';
+
+  let label, bg, color, tag, advice;
+  if (bmi < 18.5) {
+    label = 'UNDERWEIGHT'; bg = 'rgba(55,138,221,0.1)'; color = '#378ADD'; tag = '// BULK MODE ACTIVATED';
+    advice = 'BMI ' + bmi.toFixed(1) + ' — Time to eat big, lift heavy. Increase caloric surplus by ' + Math.round(tdee*0.1).toLocaleString() + ' kcal/day. Focus on compound lifts — squat, deadlift, bench — and hit your protein targets every single day.';
+  } else if (bmi < 23) {
+    label = 'LEAN & OPTIMAL'; bg = 'rgba(99,153,34,0.1)'; color = '#639922'; tag = '// MAINTAIN & PERFORM';
+    advice = 'BMI ' + bmi.toFixed(1) + ' — You\'re in the zone. Stay disciplined — train 4–5x per week, keep protein high at 2g/kg bodyweight, sleep 8 hours. This is where peak performance lives.';
+  } else if (bmi < 25) {
+    label = 'SLIGHT SURPLUS'; bg = 'rgba(186,117,23,0.1)'; color = '#BA7517'; tag = '// CUT PHASE RECOMMENDED';
+    advice = 'BMI ' + bmi.toFixed(1) + ' — Run a deficit of ' + Math.round(tdee*0.15).toLocaleString() + ' kcal/day. Add cardio 3x/week, cut processed food. You\'re close to optimal — push through the last stretch.';
+  } else if (bmi < 30) {
+    label = 'OVERWEIGHT'; bg = 'rgba(226,75,74,0.1)'; color = '#E24B4A'; tag = '// TIME TO GET SERIOUS';
+    advice = 'BMI ' + bmi.toFixed(1) + ' — No excuses. Cut ' + Math.round(tdee*0.2).toLocaleString() + ' kcal/day, train 5x/week minimum. Consult a nutritionist to build a solid game plan. The work starts now.';
+  } else {
+    label = 'CRITICAL — ACT NOW'; bg = 'rgba(226,75,74,0.15)'; color = '#E24B4A'; tag = '// SEE A PROFESSIONAL';
+    advice = 'BMI ' + bmi.toFixed(1) + ' — This is serious. See a doctor immediately and get a structured program. The body is built to recover — but only if you start today. Every day counts.';
+  }
+
+  const sb = document.getElementById('statusBar');
+  sb.style.background = bg; sb.style.borderLeftColor = color;
+  document.getElementById('statusLabel').textContent = label;
+  document.getElementById('statusLabel').style.color = color;
+  document.getElementById('advTag').textContent = tag;
+  document.getElementById('advText').textContent = advice;
+}
+
+upd();
+</script>
+</body>
+</html>
